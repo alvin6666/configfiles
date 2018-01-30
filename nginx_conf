@@ -1,0 +1,29 @@
+#######该文件是跟nginx常用配置文件######
+
+##nginx目录列表功能##
+
+#autoindex on;
+#autoindex_localtime on;
+#默认为off，显示的文件时间为GMT时间。
+#改为on后，显示的文件时间为文件的服务器时间
+#autoindex_exact_size on;
+#默认为on，显示出文件的确切大小，单位是bytes。
+#改为off后，显示出文件的大概大小，单位是kB或者MB或者GB
+server {
+        set $htdocs /data/www/TEST;
+        listen       80;
+        server_name  test.com;
+        location / {
+                root   $htdocs;
+                index  index.html index.htm index.php;
+                autoindex on;
+                autoindex_localtime on;
+                autoindex_exact_size on;
+        }
+        location ~ .*\.php?$ {
+                root          $htdocs;
+                fastcgi_pass unix:/dev/shm/php-cgi.sock;
+                fastcgi_index  index.php;
+                include        fastcgi_params;
+        }
+}
