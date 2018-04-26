@@ -1,0 +1,168 @@
+##jumpserver安装配置使用
+
+1.安装nginx+php+mysql+redis
+
+yum -y install supervisor redis
+
+service redis start
+
+
+#准备 Python3 和 Python 虚拟环境
+yum -y install wget sqlite-devel xz gcc automake zlib-devel openssl-devel epel-release git
+
+cd /m2odata/server
+wget https://www.python.org/ftp/python/3.6.1/Python-3.6.1.tar.xz
+tar xvf Python-3.6.1.tar.xz  && cd Python-3.6.1
+./configure && make && make install
+
+#建立Python虚拟环境
+cd /m2odata/server
+python3 -m venv py3
+source /m2odata/server/py3/bin/activate
+
+# 看到下面的提示符代表成功，以后运行 Jumpserver 都要先运行以上 source 命令，以下所有命令均在该虚拟环境中运行
+(py3) [root@localhost py3]
+
+
+##安装jumpserver
+
+#安装依赖RPM包
+cd /m2odata/server
+wget https://github.com/jumpserver/jumpserver/archive/1.2.1.zip
+unzip 1.2.1.zip
+ln -sf jumpserver-1.2.1/ jumpserver
+cd /m2odata/server/jumpserver/requirements/
+yum -y install $(cat rpm_requirements.txt)
+
+#安装Python依赖库
+cd /m2odata/server/jumpserver/requirements/
+pip install -r requirements.txt  # 不要指定-i参数，因为镜像上可能没有最新的包，如果没有任何报错请继续
+
+
+
+
+
+
+
+
+2.6 创建数据库 Jumpserver 并授权
+
+create database jumpserver default charset 'utf8';
+grant all on jumpserver.* to 'jumpserver'@'127.0.0.1' identified by 'jumpserver123';
+
+
+
+
+
+2.7 修改 Jumpserver 配置文件
+$ cd /m2odata/server/jumpserver
+$ cp config_example.py config.py
+$ vi config.py
+
+# 我们计划修改 DevelopmentConfig 中的配置，因为默认 Jumpserver 使用该配置，它继承自 Config
+
+注意: 配置文件是 Python 格式，不要用 TAB，而要用空格
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    DB_ENGINE = 'mysql'
+    DB_HOST = '127.0.0.1'
+    DB_PORT = 3306
+    DB_USER = 'jumpserver'
+    DB_PASSWORD = 'jumpserver123'
+    DB_NAME = 'jumpserver'
+
+...
+
+config = DevelopmentConfig()  # 确保使用的是刚才设置的配置文件
+
+
+
+yum -y install supervisor redis
+
+service redis start
+
+
+
+cd /m2odata/server/jumpserver/utils
+sh make_migrations.sh 
+(如果报错，再次执行
+cd /m2odata/server/jumpserver/requirements/
+pip install -r requirements.txt )
+
+
+#运行jumpserver
+cd /m2odata/server/jumpserver
+./jms start all  # 后台运行使用 -d 参数./jms start all -d
+
+# 新版本更新了运行脚本，使用方式./jms start|stop|status|restart all  后台运行请添加 -d 参数
+
+
+
+#####安装 SSH Server 和 WebSocket Server: Coco
+1. 下载解压文件
+cd /m2odata/server
+wget https://github.com/jumpserver/coco/archive/1.2.0.zip -O /m2odata/server/coco.zip
+unzip coco.zip
+ln -sf /m2odata/server/coco-1.2.0 /m2odata/server/coco
+
+2. 安装依赖
+
+source  /m2odata/server/py3/bin/activate
+cd /m2odata/server/coco/requirements
+yum -y install $(cat rpm_requirements.txt)
+pip install -r requirements.txt
+3. 查看配置文件并运行服务
+cd /m2odata/server/coco
+cp conf_example.py conf.py
+4. 运行服务
+./cocod start  # 后台运行使用 -d 参数./cocod start -d
+
+# 新版本更新了运行脚本，使用方式./cocod start|stop|status|restart  后台运行请添加 -d 参数
+
+5. 这时需要去Jumpserver管理后台 - 会话管理 - 终端管理（http://10.0.5.194:8080/terminal/terminal/）接受Coco的注册
+6. 测试连接
+ssh -p2222 admin@172.18.17.19
+密码：admin
+如果能登陆代表部署成功
+
+
+
+
+四. 安装 Web Terminal 前端: Luna
+cd /m2odata/server/
+wget https://github.com/jumpserver/luna/releases/download/v1.0.0/luna.tar.gz
+tar zxvf luna.tar.gz
+chown -Rf www:www luna/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+docker run --name jms_guacamole -d \
+  -p 8081:8080 -v /m2odata/server/guacamole/key:/config/guacamole/key \
+  -e JUMPSERVER_KEY_DIR=/config/guacamole/key \
+  -e JUMPSERVER_SERVER=http://10.0.5.194:8080 \
+  registry.jumpserver.org/public/guacamole:1.0.0
+
+
+
+
+
+
+
+
+
+
+
+
+
